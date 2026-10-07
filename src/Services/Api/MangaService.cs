@@ -1,0 +1,129 @@
+using Library.Service.CacheService;
+using CronModels;
+using Data.ApplicationDbContext;
+using Library.Extensions.Enumeratore;
+using MangaForms;
+using MangaModels;
+using MangaUtenteModels;
+using MangaViews;
+using Microsoft.EntityFrameworkCore;
+using TaskOption;
+using MangaMiciomaniaModels;
+using CanzoniModels;
+
+namespace Manga.Services
+{
+    public class MangaService
+    {
+        private readonly AppDbContext _context;
+        private readonly IDbContextFactory<AppDbContext> _contextFactory;
+        private readonly CacheService _cacheService;
+
+        public MangaService(
+            AppDbContext context,
+            IDbContextFactory<AppDbContext> contextFactory,
+            CacheService cacheService)
+        {
+            _context = context;
+            _contextFactory = contextFactory;
+            _cacheService = cacheService;
+        }
+
+        public async Task<MangaUtenteGet> GetMangaUtente(string idUtente)
+        {
+            await using var context = _contextFactory.CreateDbContext();
+
+            if (string.IsNullOrEmpty(idUtente))
+            {
+                return new MangaUtenteGet("", "", "");
+            }
+
+            return await context.MangaUtenti
+                .Where((MangaUtente m) => m.idUtente == idUtente)
+                .Select((MangaUtente m) => new MangaUtenteGet(m.manga, m.mangamicio, m.canzonimicio))
+                .FirstOrDefaultAsync()
+                .ContinueWith((Task<MangaUtenteGet?> task) => task.Result ?? new MangaUtenteGet("", "", ""));
+        }
+
+        public async Task<List<MangaClass>> GetAllMangaCache()
+        {
+            await using var context = _contextFactory.CreateDbContext();
+
+            return await _cacheService.GetOrCreate(new CacheOptions<List<MangaClass>>
+            {
+                Task = () => context.ListaManga.ToListAsync(),
+                NomeCache = "AllManga",
+                DurataCache = TimeSpan.FromHours(2)
+            });
+        }
+
+        public async Task<List<MangaMiciomania>> GetAllMangaMiciomaniaCache()
+        {
+            await using var context = _contextFactory.CreateDbContext();
+
+            return await _cacheService.GetOrCreate(new CacheOptions<List<MangaMiciomania>>
+            {
+                Task = () => context.MangaMiciomania.ToListAsync(),
+                NomeCache = "AllMangaMiciomania",
+                DurataCache = TimeSpan.FromHours(2)
+            });
+        }
+
+        public async Task<List<CanzoniMiciomania>> GetAllCanzoniMiciomaniaCache()
+        {
+            await using var context = _contextFactory.CreateDbContext();
+
+            return await _cacheService.GetOrCreate(new CacheOptions<List<CanzoniMiciomania>>
+            {
+                Task = () => context.CanzoniMiciomania.ToListAsync(),
+                NomeCache = "AllCanzoniMiciomania",
+                DurataCache = TimeSpan.FromHours(2)
+            });
+        }
+
+        public Task AggiungiManga(MangaClass mangaForm)
+        {
+            var newManga = new MangaClass
+            {
+                nome = mangaForm.nome,
+                autore = mangaForm.autore,
+                genere = mangaForm.genere,
+                copertina = mangaForm.copertina,
+                path = mangaForm.path,
+                completato = mangaForm.completato,
+                capitoli = mangaForm.capitoli
+            };
+
+            _context.ListaManga.Add(newManga);
+            return _context.SaveChangesAsync();
+        }
+
+        public async Task UpsertManga(string idUtente, MangaUtenteForm nuoviManga)
+        {
+            MangaUtente? mangaUtente = await _context.MangaUtenti
+                .FirstOrDefaultAsync(mu => mu.idUtente == idUtente);
+
+            if (mangaUtente == null)
+            {
+                mangaUtente = new MangaUtente
+                {
+                    idUtente = idUtente,
+                    manga = nuoviManga.manga,
+                    mangamicio = nuoviManga.mangamicio,
+                    canzonimicio = nuoviManga.canzonimicio
+                };
+                _context.MangaUtenti.Add(mangaUtente);
+            }
+            else
+            {
+                mangaUtente.manga = nuoviManga.manga ?? mangaUtente.manga;
+                mangaUtente.mangamicio = nuoviManga.mangamicio ?? mangaUtente.mangamicio;
+                mangaUtente.canzonimicio = nuoviManga.canzonimicio ?? mangaUtente.canzonimicio;
+
+                _context.MangaUtenti.Update(mangaUtente);
+            }
+
+            await _context.SaveChangesAsync();
+        }
+    }
+}

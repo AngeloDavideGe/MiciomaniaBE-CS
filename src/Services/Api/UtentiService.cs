@@ -1,0 +1,238 @@
+using System.Text.Json;
+using AdminModels;
+using Library.Service.CacheService;
+using Data.ApplicationDbContext;
+using Microsoft.EntityFrameworkCore;
+using Npgsql;
+using TaskOption;
+using UserForms;
+using UserModels;
+using UserViews;
+
+namespace Utenti.Services
+{
+    public class UtentiService
+    {
+        private readonly AppDbContext _context;
+        private readonly CacheService _cache;
+
+        public UtentiService(
+            AppDbContext context,
+            CacheService cache)
+        {
+            _context = context;
+            _cache = cache;
+        }
+
+        public Task<List<UserParams>> GetAllUtenti()
+        {
+            return _cache.GetOrCreate(new CacheOptions<List<UserParams>>
+            {
+                NomeCache = "UtentiCache",
+                DurataCache = TimeSpan.FromHours(2),
+                Task = () => _context.Users
+                    .Join(
+                        _context.Admins,
+                        (User u) => u.id,
+                        (Admin a) => a.idUtente,
+                        (User u, Admin a) => new UserParams
+                        {
+                            id = u.id,
+                            nome = u.nome,
+                            profilePic = u.profilePic,
+                            ruolo = a.ruolo
+                        }
+                    )
+                    .ToListAsync()
+            });
+        }
+
+        public async Task<UserDto?> GetUtenteById(string id)
+        {
+            return await (
+                from u in _context.Users
+                where u.id == id
+
+                join a in _context.Admins
+                    on u.id equals a.idUtente into adminGroup
+                from admin in adminGroup.DefaultIfEmpty()
+
+                join g in _context.Giocatori
+                    on u.id equals g.idUtente into giocatoreGroup
+                from giocatore in giocatoreGroup.DefaultIfEmpty()
+
+                select new UserDto
+                {
+                    id = u.id,
+
+                    admin = new AdminDto
+                    {
+                        ruolo = admin != null
+                            ? admin.ruolo
+                            : "user",
+
+                        permessi = admin.permessi
+                    },
+                    credenziali = new CredenzialiDto
+                    {
+                        nome = u.nome,
+                        email = u.email,
+                        password = u.password,
+                        profilePic = u.profilePic
+                    },
+                    profile = new ProfileDto
+                    {
+                        bio = u.bio,
+                        compleanno = u.compleanno,
+                        social = FormatSocial(u.social)
+                    },
+                    iscrizione = new IscrizioneDto
+                    {
+                        squadra = giocatore != null
+                            ? giocatore.squadra
+                            : null,
+
+                        provincia = u.provincia,
+                        punteggio = giocatore != null
+                            ? giocatore.punteggio
+                            : null
+                    }
+                }
+            ).FirstOrDefaultAsync();
+        }
+
+        public async Task<UserDto?> GetUtenteByCredentials(string email, string password)
+        {
+            return await (
+                from u in _context.Users
+                where u.email == email && u.password == password
+
+                join a in _context.Admins
+                    on u.id equals a.idUtente into adminGroup
+                from admin in adminGroup.DefaultIfEmpty()
+
+                join g in _context.Giocatori
+                    on u.id equals g.idUtente into giocatoreGroup
+                from giocatore in giocatoreGroup.DefaultIfEmpty()
+
+                select new UserDto
+                {
+                    id = u.id,
+                    admin = new AdminDto
+                    {
+                        ruolo = admin != null ? admin.ruolo : "user",
+                        permessi = admin.permessi
+                    },
+                    credenziali = new CredenzialiDto
+                    {
+                        nome = u.nome,
+                        email = u.email,
+                        password = u.password,
+                        profilePic = u.profilePic,
+                    },
+                    profile = new ProfileDto
+                    {
+                        bio = u.bio,
+                        compleanno = u.compleanno,
+                        social = FormatSocial(u.social)
+                    },
+                    iscrizione = new IscrizioneDto
+                    {
+                        squadra = giocatore != null ? giocatore.squadra : null,
+                        provincia = u.provincia,
+                        punteggio = giocatore != null ? giocatore.punteggio : null
+                    }
+                }
+            ).FirstOrDefaultAsync();
+        }
+
+        public Task AggiungiUtente(UserPostForm userForm)
+        {
+            return _context.Database.ExecuteSqlRawAsync(
+                "SELECT utenti_schema.create_user_complete({0}, {1}, {2}, {3})",
+                userForm.username,
+                userForm.nome,
+                userForm.email,
+                userForm.password
+            );
+        }
+
+        public Task AggiornaUtente(string id, UserDto userForm)
+        {
+            var compleannoParam = new NpgsqlParameter(
+                "compleanno",
+                NpgsqlTypes.NpgsqlDbType.Timestamp
+            )
+            {
+                Value = DateTime.SpecifyKind(userForm.profile.compleanno ?? DateTime.MinValue, DateTimeKind.Unspecified)
+            };
+
+            return _context.Database.ExecuteSqlInterpolatedAsync(
+                $@"SELECT utenti_schema.update_user_complete(
+                    {id},
+                    {userForm.credenziali.nome},
+                    {userForm.credenziali.email},
+                    {userForm.credenziali.password},
+                    {userForm.credenziali.profilePic},
+                    {userForm.iscrizione.provincia},
+                    {userForm.profile.bio},
+                    {userForm.iscrizione.squadra},
+                    {compleannoParam},
+                    {JsonSerializer.Serialize(userForm.profile.social)}
+                )"
+            );
+        }
+
+        public Task EliminaUtente(string id)
+        {
+            return _context.Database.ExecuteSqlInterpolatedAsync(
+                $"SELECT utenti_schema.delete_user({id})"
+            );
+        }
+
+        public async Task AggiornaRuoloAdmin(string idUtente, UserRuoloUpdateForm ruolo)
+        {
+            Task task1 = _context.Database.ExecuteSqlInterpolatedAsync(
+                $@"UPDATE utenti_schema.admin 
+                SET ruolo = {ruolo.ruolo}, permessi = {JsonSerializer.Serialize(ruolo.permessi)} 
+                WHERE ""idUtente"" = {idUtente};"
+            );
+
+            Task task2 = _cache.UpdateCache(
+                new CacheUpdate<List<UserParams>>
+                {
+                    NomeCache = "UtentiCache",
+                    DurataCache = TimeSpan.FromHours(2),
+                    Task = (List<UserParams> utenti) =>
+                    {
+                        UserParams? utente = utenti.FirstOrDefault(u => u.id == idUtente);
+                        if (utente != null)
+                        {
+                            utente.ruolo = ruolo.ruolo;
+                        }
+
+                        return Task.FromResult(utenti);
+                    }
+                }
+            );
+
+            await Task.WhenAll(task1, task2);
+        }
+
+        private static Dictionary<string, string>? FormatSocial(JsonElement? socialElement)
+        {
+            if (socialElement == null || !socialElement.HasValue || socialElement.Value.ValueKind == JsonValueKind.Null)
+            {
+                return null;
+            }
+            try
+            {
+                return JsonSerializer.Deserialize<Dictionary<string, string>>(socialElement.Value);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+    }
+}

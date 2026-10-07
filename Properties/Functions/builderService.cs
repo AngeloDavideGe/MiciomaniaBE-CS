@@ -1,0 +1,56 @@
+using Library.Service.TaskServices;
+using Library.Service.BackGroundService;
+using Library.Service.CacheService;
+using Data.ApplicationDbContext;
+using Interazioni.Services;
+using Manga.Services;
+using Microsoft.EntityFrameworkCore;
+using Posts.Services;
+using Squadre.Services;
+using Utenti.Services;
+using Views.DropboxSettings;
+using Cron.Services;
+
+public static class BuilderService
+{
+    public static WebApplicationBuilder GetBuilderService(WebApplicationBuilder builder)
+    {
+        builder.Services.AddDbContext<AppDbContext>(options =>
+            options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+        builder.Services.AddDbContextFactory<AppDbContext>(options =>
+        {
+            options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"));
+            options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
+        }, lifetime: ServiceLifetime.Scoped);
+
+        builder.Services.Configure<DropboxSettings>(builder.Configuration.GetSection("Dropbox"));
+        builder.Services.AddScoped<AppTaskService>();
+        builder.Services.AddScoped<CacheService>();
+        builder.Services.AddScoped<BackGroundService>();
+        builder.Services.AddScoped<SquadreService>();
+        builder.Services.AddScoped<PostsService>();
+        builder.Services.AddScoped<MangaService>();
+        builder.Services.AddScoped<InterazioniService>();
+        builder.Services.AddScoped<UtentiService>();
+        builder.Services.AddScoped<CronService>();
+        builder.Services.AddHttpClient();
+        builder.Services.AddControllers();
+        builder.Services.AddEndpointsApiExplorer();
+        builder.Services.AddSwaggerGenWithSecurity();
+        builder.Services.AddMemoryCache();
+
+        builder.Services.AddCors(corsOptions =>
+        {
+            corsOptions.AddDefaultPolicy(policy =>
+            {
+                policy
+                    .AllowAnyOrigin()
+                    .AllowAnyHeader()
+                    .AllowAnyMethod();
+            });
+        });
+
+        return builder;
+    }
+}
