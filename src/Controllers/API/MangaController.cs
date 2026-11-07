@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using MangaViews;
 using MangaModels;
-using MangaForms;
 using TaskOption;
 using Library.Service.TaskServices;
 using Manga.Services;
@@ -97,7 +96,7 @@ namespace Manga.Controllers
         // [Authorize]
         [AllowAnonymous]
         [HttpPut("upsert_manga_preferiti/{idUtente}")]
-        public async Task<ActionResult> UpdateMangaPreferiti(string idUtente, [FromBody] MangaUtenteForm nuoviManga)
+        public async Task<ActionResult> UpdateMangaPreferiti(string idUtente, [FromBody] MangaUtenteGet nuoviManga)
         {
             ActionResult result = await _tasks.SqlFunc(new SqlTaskOptions
             {

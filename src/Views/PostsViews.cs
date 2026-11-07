@@ -1,4 +1,5 @@
 using TweetModels;
+using UserViews;
 
 namespace PostsViews
 {
@@ -15,27 +16,13 @@ namespace PostsViews
 
     public class Profilo
     {
-        public UserPost user { get; set; }
+        public UserDto user { get; set; }
         public List<Tweet> tweets { get; set; }
 
-        public Profilo(UserPost u, List<Tweet> t)
+        public Profilo(UserDto u, List<Tweet> t)
         {
             user = u;
             tweets = t;
         }
     }
-
-    public class UserPost
-    {
-        public string id { get; set; } = "";
-        public string nome { get; set; } = "";
-        public string email { get; set; } = "";
-        public string password { get; set; } = "";
-        public string? profilePic { get; set; } = "";
-        public string? provincia { get; set; } = "";
-        public string? bio { get; set; } = "";
-        public DateTime? compleanno { get; set; }
-        public Dictionary<string, string>? social { get; set; }
-    }
-
 }

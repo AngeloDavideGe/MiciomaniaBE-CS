@@ -1,29 +1,17 @@
-# Build output
 bin/
 obj/
-
-# User-specific files
+packages/
+Thumbs.db
+.DS_Store
+.vscode/
+.idea/
+.vs/
+.build-check
 *.user
 *.suo
 *.userosscache
 *.sln.docstates
-
-# Rider / VS Code / Visual Studio settings
-.vscode/
-.idea/
 *.code-workspace
-
-# NuGet packages
 *.nupkg
 *.snupkg
-packages/
-
-# Logs
 *.log
-
-# OS generated files
-.DS_Store
-Thumbs.db
-
-# Others
-*.vs/

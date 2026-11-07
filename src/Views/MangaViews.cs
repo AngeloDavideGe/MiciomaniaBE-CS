@@ -17,15 +17,19 @@ namespace MangaViews
 
     public class MangaUtenteGet
     {
-        public string? manga { get; set; }
-        public string? mangamicio { get; set; }
+        public string? mangaPreferito { get; set; }
+        public string? mangaMicioPreferito { get; set; }
         public string? canzonimicio { get; set; }
+        public string? mangaLeggendo { get; set; }
+        public string? mangaMicioLeggendo { get; set; }
 
-        public MangaUtenteGet(string? m, string? mm, string? cm)
+        public MangaUtenteGet(string? m, string? mm, string? cm, string? ml, string? mml)
         {
-            manga = m;
-            mangamicio = mm;
+            mangaPreferito = m;
+            mangaMicioPreferito = mm;
             canzonimicio = cm;
+            mangaLeggendo = ml;
+            mangaMicioLeggendo = mml;
         }
     }
 }

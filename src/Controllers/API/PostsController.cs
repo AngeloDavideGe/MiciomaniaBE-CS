@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using PostsViews;
 using TweetModels;
-using UserModels;
 using PostsForms;
 using TaskOption;
 using Posts.Services;
@@ -10,6 +9,7 @@ using Library.Service.BackGroundService;
 using CronModels;
 using Cron.Services;
 using Microsoft.AspNetCore.Authorization;
+using UserViews;
 
 namespace Posts.Controllers
 {
@@ -47,23 +47,12 @@ namespace Posts.Controllers
             [FromQuery] string idUtente,
             [FromQuery] int maxElems)
         {
-            return await _tasks.MultiTask(new MultiTaskOptions<User, List<Tweet>, Profilo>
+            return await _tasks.MultiTask(new MultiTaskOptions<UserDto, List<Tweet>, Profilo>
             {
-                Task1 = () => _postsService.GetUser(idUtente),
+                Task1 = () => _postsService.GetUtenteById(idUtente),
                 Task2 = () => _postsService.GetUserTweets(idUtente, maxElems),
                 ResultFactory = (user, tweets) => new Profilo(
-                    new UserPost
-                    {
-                        id = user.id,
-                        nome = user.nome,
-                        email = user.email,
-                        password = user.password,
-                        profilePic = user.profilePic,
-                        provincia = user.provincia,
-                        bio = user.bio,
-                        compleanno = user.compleanno,
-                        social = _postsService.FormatSocial(user.social),
-                    },
+                    user,
                     tweets
                 ),
                 ErrorMessage = "Errore nel recupero del profilo",

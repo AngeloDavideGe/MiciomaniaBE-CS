@@ -4,11 +4,12 @@ using System.Security.Claims;
 using UserViews;
 using UserForms;
 using TaskOption;
-using Utenti.Services;
 using Library.Service.TaskServices;
 using Library.Service.BackGroundService;
+using Library.Service.TokenServices;
 using CronModels;
 using Cron.Services;
+using Utenti.Services;
 
 namespace Utenti.Controllers
 {
@@ -97,20 +98,6 @@ namespace Utenti.Controllers
         }
 
         [AllowAnonymous]
-        [HttpGet("get_utente_by_id/{id}")]
-        public async Task<ActionResult<UserDto?>> GetUserById(
-            string id)
-        {
-            return await _task.SingleTask(
-                new SingleTaskOptions<UserDto?>
-                {
-                    Task = () => _utentiService.GetUtenteById(id),
-                    ErrorMessage = "Utente non trovato"
-                }
-            );
-        }
-
-        [AllowAnonymous]
         [HttpPost("post_utente")]
         public async Task<ActionResult> PostUser(
             [FromBody] UserPostForm userForm)
@@ -150,31 +137,6 @@ namespace Utenti.Controllers
                     SuccessMessage = "Utente aggiornato con successo",
                     ErrorMessage = "Errore aggiornamento utente"
                 }
-            );
-        }
-
-        // [Authorize]
-        [AllowAnonymous]
-        [HttpGet("get_utente_corrente")]
-        public async Task<ActionResult<UserDto?>>
-            GetUtenteCorrente()
-        {
-            string? idUtente = User.FindFirstValue(
-                ClaimTypes.NameIdentifier
-            );
-
-            if (string.IsNullOrEmpty(idUtente))
-            {
-                return Unauthorized();
-            }
-
-            return await _task.SingleTask(new SingleTaskOptions<UserDto?>
-            {
-                Task = () => _utentiService.GetUtenteById(
-                    idUtente
-                ),
-                ErrorMessage = "Errore recupero utente"
-            }
             );
         }
 

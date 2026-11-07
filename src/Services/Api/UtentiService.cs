@@ -47,60 +47,6 @@ namespace Utenti.Services
             });
         }
 
-        public async Task<UserDto?> GetUtenteById(string id)
-        {
-            return await (
-                from u in _context.Users
-                where u.id == id
-
-                join a in _context.Admins
-                    on u.id equals a.idUtente into adminGroup
-                from admin in adminGroup.DefaultIfEmpty()
-
-                join g in _context.Giocatori
-                    on u.id equals g.idUtente into giocatoreGroup
-                from giocatore in giocatoreGroup.DefaultIfEmpty()
-
-                select new UserDto
-                {
-                    id = u.id,
-
-                    admin = new AdminDto
-                    {
-                        ruolo = admin != null
-                            ? admin.ruolo
-                            : "user",
-
-                        permessi = admin.permessi
-                    },
-                    credenziali = new CredenzialiDto
-                    {
-                        nome = u.nome,
-                        email = u.email,
-                        password = u.password,
-                        profilePic = u.profilePic
-                    },
-                    profile = new ProfileDto
-                    {
-                        bio = u.bio,
-                        compleanno = u.compleanno,
-                        social = FormatSocial(u.social)
-                    },
-                    iscrizione = new IscrizioneDto
-                    {
-                        squadra = giocatore != null
-                            ? giocatore.squadra
-                            : null,
-
-                        provincia = u.provincia,
-                        punteggio = giocatore != null
-                            ? giocatore.punteggio
-                            : null
-                    }
-                }
-            ).FirstOrDefaultAsync();
-        }
-
         public async Task<UserDto?> GetUtenteByCredentials(string email, string password)
         {
             return await (

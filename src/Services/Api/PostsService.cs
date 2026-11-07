@@ -5,6 +5,7 @@ using PostsForms;
 using PostsViews;
 using TweetModels;
 using UserModels;
+using UserViews;
 
 namespace Posts.Services
 {
@@ -21,13 +22,58 @@ namespace Posts.Services
             _contextFactory = contextFactory;
         }
 
-        public async Task<User> GetUser(string idUtente)
+        public async Task<UserDto> GetUtenteById(string id)
         {
-            await using var context = _contextFactory.CreateDbContext();
+            return await (
+                from u in _context.Users
+                where u.id == id
 
-            return await context.Users
-                .FirstOrDefaultAsync((User u) => u.id == idUtente)
-                ?? throw new Exception("Utente non trovato");
+                join a in _context.Admins
+                    on u.id equals a.idUtente into adminGroup
+                from admin in adminGroup.DefaultIfEmpty()
+
+                join g in _context.Giocatori
+                    on u.id equals g.idUtente into giocatoreGroup
+                from giocatore in giocatoreGroup.DefaultIfEmpty()
+
+                select new UserDto
+                {
+                    id = u.id,
+
+                    admin = new AdminDto
+                    {
+                        ruolo = admin != null
+                            ? admin.ruolo
+                            : "user",
+
+                        permessi = admin.permessi
+                    },
+                    credenziali = new CredenzialiDto
+                    {
+                        nome = u.nome,
+                        email = u.email,
+                        password = u.password,
+                        profilePic = u.profilePic
+                    },
+                    profile = new ProfileDto
+                    {
+                        bio = u.bio,
+                        compleanno = u.compleanno,
+                        social = FormatSocial(u.social)
+                    },
+                    iscrizione = new IscrizioneDto
+                    {
+                        squadra = giocatore != null
+                            ? giocatore.squadra
+                            : null,
+
+                        provincia = u.provincia,
+                        punteggio = giocatore != null
+                            ? giocatore.punteggio
+                            : null
+                    }
+                }
+            ).FirstOrDefaultAsync() ?? throw new Exception("Utente non trovato");
         }
 
         public async Task<List<Tweet>> GetUserTweets(string idUtente, int maxElems)
@@ -105,7 +151,7 @@ namespace Posts.Services
         }
 
         // -----------------------------------------------------------------------
-        public Dictionary<string, string>? FormatSocial(JsonElement? socialElement)
+        public static Dictionary<string, string>? FormatSocial(JsonElement? socialElement)
         {
             if (socialElement == null || !socialElement.HasValue || socialElement.Value.ValueKind == JsonValueKind.Null)
             {

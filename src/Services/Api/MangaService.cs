@@ -1,8 +1,5 @@
 using Library.Service.CacheService;
-using CronModels;
 using Data.ApplicationDbContext;
-using Library.Extensions.Enumeratore;
-using MangaForms;
 using MangaModels;
 using MangaUtenteModels;
 using MangaViews;
@@ -35,14 +32,14 @@ namespace Manga.Services
 
             if (string.IsNullOrEmpty(idUtente))
             {
-                return new MangaUtenteGet("", "", "");
+                return new MangaUtenteGet("", "", "", "", "");
             }
 
             return await context.MangaUtenti
                 .Where((MangaUtente m) => m.idUtente == idUtente)
-                .Select((MangaUtente m) => new MangaUtenteGet(m.manga, m.mangamicio, m.canzonimicio))
+                .Select((MangaUtente m) => new MangaUtenteGet(m.mangaPreferito, m.mangaMicioPreferito, m.canzonimicio, m.mangaLeggendo, m.mangaMicioLeggendo))
                 .FirstOrDefaultAsync()
-                .ContinueWith((Task<MangaUtenteGet?> task) => task.Result ?? new MangaUtenteGet("", "", ""));
+                .ContinueWith((Task<MangaUtenteGet?> task) => task.Result ?? new MangaUtenteGet("", "", "", "", ""));
         }
 
         public async Task<List<MangaClass>> GetAllMangaCache()
@@ -98,7 +95,7 @@ namespace Manga.Services
             return _context.SaveChangesAsync();
         }
 
-        public async Task UpsertManga(string idUtente, MangaUtenteForm nuoviManga)
+        public async Task UpsertManga(string idUtente, MangaUtenteGet nuoviManga)
         {
             MangaUtente? mangaUtente = await _context.MangaUtenti
                 .FirstOrDefaultAsync(mu => mu.idUtente == idUtente);
@@ -108,17 +105,21 @@ namespace Manga.Services
                 mangaUtente = new MangaUtente
                 {
                     idUtente = idUtente,
-                    manga = nuoviManga.manga,
-                    mangamicio = nuoviManga.mangamicio,
-                    canzonimicio = nuoviManga.canzonimicio
+                    mangaPreferito = nuoviManga.mangaPreferito,
+                    mangaMicioPreferito = nuoviManga.mangaMicioPreferito,
+                    canzonimicio = nuoviManga.canzonimicio,
+                    mangaLeggendo = nuoviManga.mangaLeggendo,
+                    mangaMicioLeggendo = nuoviManga.mangaMicioLeggendo
                 };
                 _context.MangaUtenti.Add(mangaUtente);
             }
             else
             {
-                mangaUtente.manga = nuoviManga.manga ?? mangaUtente.manga;
-                mangaUtente.mangamicio = nuoviManga.mangamicio ?? mangaUtente.mangamicio;
+                mangaUtente.mangaPreferito = nuoviManga.mangaPreferito ?? mangaUtente.mangaPreferito;
+                mangaUtente.mangaMicioPreferito = nuoviManga.mangaMicioPreferito ?? mangaUtente.mangaMicioPreferito;
                 mangaUtente.canzonimicio = nuoviManga.canzonimicio ?? mangaUtente.canzonimicio;
+                mangaUtente.mangaLeggendo = nuoviManga.mangaLeggendo ?? mangaUtente.mangaLeggendo;
+                mangaUtente.mangaMicioLeggendo = nuoviManga.mangaMicioLeggendo ?? mangaUtente.mangaMicioLeggendo;
 
                 _context.MangaUtenti.Update(mangaUtente);
             }
