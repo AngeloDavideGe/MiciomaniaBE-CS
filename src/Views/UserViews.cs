@@ -1,3 +1,5 @@
+using AdminModels;
+
 namespace UserViews
 {
     public class UserParams
@@ -5,7 +7,8 @@ namespace UserViews
         public string id { get; set; } = "";
         public string nome { get; set; } = "";
         public string? profilePic { get; set; } = "";
-        public string ruolo { get; set; } = "";
+        public RuoloUtente ruolo { get; set; } = RuoloUtente.User;
+        public PermessiUtente permessi { get; set; } = new();
     }
 
     public class UserDto
@@ -19,8 +22,8 @@ namespace UserViews
 
     public class AdminDto
     {
-        public string ruolo { get; set; } = "";
-        public List<string> permessi { get; set; } = new List<string>();
+        public RuoloUtente ruolo { get; set; } = RuoloUtente.User;
+        public PermessiUtente permessi { get; set; } = new();
     }
 
     public class CredenzialiDto

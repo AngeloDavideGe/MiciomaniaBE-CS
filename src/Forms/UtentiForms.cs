@@ -1,3 +1,5 @@
+using AdminModels;
+
 namespace UserForms
 {
     public class UserPostForm
@@ -10,7 +12,7 @@ namespace UserForms
 
     public class UserRuoloUpdateForm
     {
-        public string ruolo { get; set; } = "";
-        public List<string> permessi { get; set; } = new List<string>();
+        public RuoloUtente ruolo { get; set; } = RuoloUtente.User;
+        public PermessiUtente permessi { get; set; } = new();
     }
 }

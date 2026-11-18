@@ -1,4 +1,5 @@
 using System.Text.Json;
+using AdminModels;
 using Data.ApplicationDbContext;
 using Microsoft.EntityFrameworkCore;
 using PostsForms;
@@ -44,9 +45,11 @@ namespace Posts.Services
                     {
                         ruolo = admin != null
                             ? admin.ruolo
-                            : "user",
+                            : RuoloUtente.User,
 
-                        permessi = admin.permessi
+                        permessi = PermessiUtente.ForRole(
+                            admin != null ? admin.ruolo : RuoloUtente.User
+                        )
                     },
                     credenziali = new CredenzialiDto
                     {

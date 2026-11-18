@@ -30,20 +30,30 @@ namespace Utenti.Services
             {
                 NomeCache = "UtentiCache",
                 DurataCache = TimeSpan.FromHours(2),
-                Task = () => _context.Users
-                    .Join(
-                        _context.Admins,
-                        (User u) => u.id,
-                        (Admin a) => a.idUtente,
-                        (User u, Admin a) => new UserParams
-                        {
-                            id = u.id,
-                            nome = u.nome,
-                            profilePic = u.profilePic,
-                            ruolo = a.ruolo
-                        }
-                    )
-                    .ToListAsync()
+                Task = async () =>
+                {
+                    List<UserParams> utenti = await _context.Users
+                        .Join(
+                            _context.Admins,
+                            (User u) => u.id,
+                            (Admin a) => a.idUtente,
+                            (User u, Admin a) => new UserParams
+                            {
+                                id = u.id,
+                                nome = u.nome,
+                                profilePic = u.profilePic,
+                                ruolo = a.ruolo
+                            }
+                        )
+                        .ToListAsync();
+
+                    foreach (UserParams utente in utenti)
+                    {
+                        utente.permessi = PermessiUtente.ForRole(utente.ruolo);
+                    }
+
+                    return utenti;
+                }
             });
         }
 
@@ -66,8 +76,10 @@ namespace Utenti.Services
                     id = u.id,
                     admin = new AdminDto
                     {
-                        ruolo = admin != null ? admin.ruolo : "user",
-                        permessi = admin.permessi
+                        ruolo = admin != null ? admin.ruolo : RuoloUtente.User,
+                        permessi = PermessiUtente.ForRole(
+                            admin != null ? admin.ruolo : RuoloUtente.User
+                        )
                     },
                     credenziali = new CredenzialiDto
                     {
@@ -140,7 +152,7 @@ namespace Utenti.Services
         {
             Task task1 = _context.Database.ExecuteSqlInterpolatedAsync(
                 $@"UPDATE utenti_schema.admin 
-                SET ruolo = {ruolo.ruolo}, permessi = {JsonSerializer.Serialize(ruolo.permessi)} 
+                SET ruolo = {ruolo.ruolo.ToDatabaseValue()}, permessi = {JsonSerializer.Serialize(ruolo.permessi)} 
                 WHERE ""idUtente"" = {idUtente};"
             );
 
@@ -155,6 +167,7 @@ namespace Utenti.Services
                         if (utente != null)
                         {
                             utente.ruolo = ruolo.ruolo;
+                            utente.permessi = PermessiUtente.ForRole(ruolo.ruolo);
                         }
 
                         return Task.FromResult(utenti);

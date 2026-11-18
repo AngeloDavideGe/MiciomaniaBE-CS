@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 using UserModels;
 using TweetModels;
 using GiocatoreModels;
@@ -48,6 +49,15 @@ namespace Data.ApplicationDbContext
             modelBuilder.Entity<Admin>(entity =>
             {
                 entity.HasKey(a => a.idUtente);
+                entity.Property(a => a.ruolo)
+                    .HasConversion(
+                        ruolo => ruolo.ToDatabaseValue(),
+                        valore => RuoloUtenteExtensions.FromDatabaseValue(valore));
+                entity.Property(a => a.permessi)
+                    .HasColumnType("jsonb")
+                    .HasConversion(
+                        permessi => JsonSerializer.Serialize(permessi, (JsonSerializerOptions?)null),
+                        valore => PermessiUtente.FromDatabaseValue(valore));
 
                 entity.HasOne<User>()
                     .WithOne()
